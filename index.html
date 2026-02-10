@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ranking Battle — リアルタイムチャット</title>
+  <title>⚔️ Ranking Battle</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,279 +12,593 @@
       background: #0a0a0a;
       color: #e0e0e0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
+      min-height: 100dvh;
     }
 
-    header {
+    /* Header */
+    .header {
       padding: 1rem 1.2rem;
-      border-bottom: 1px solid #1e1e1e;
+      border-bottom: 1px solid #1a1a1a;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-shrink: 0;
+    }
+    .header h1 { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.02em; }
+    .header-name {
+      font-size: 0.7rem; color: #666;
+      background: #141414; padding: 0.25rem 0.6rem;
+      border-radius: 999px; border: 1px solid #222;
+    }
+    .header-name span { color: #4895EF; font-weight: 700; }
+
+    /* Screens */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* Lobby */
+    .lobby {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 1.5rem; min-height: calc(100dvh - 56px);
+      gap: 2rem;
+    }
+    .lobby-title { font-size: 3rem; line-height: 1; }
+    .lobby-sub { font-size: 0.8rem; color: #555; text-align: center; }
+
+    .lobby-actions { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; max-width: 320px; }
+
+    .btn {
+      display: block; width: 100%; padding: 0.9rem;
+      border: none; border-radius: 12px;
+      font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+    .btn-primary { background: #4895EF; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #3a7bd5; }
+    .btn-secondary { background: #1a1a1a; color: #ccc; border: 1px solid #2a2a2a; }
+    .btn-secondary:hover:not(:disabled) { background: #222; }
+
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #a93226; }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #c9a84c, #e8c84c);
+      color: #1a1a1a; font-size: 1rem;
+    }
+    .btn-gold:hover:not(:disabled) { background: linear-gradient(135deg, #b8973f, #d4b63f); }
+
+    .join-row { display: flex; gap: 0.5rem; }
+    .join-row input {
+      flex: 1; background: #141414; border: 1px solid #2a2a2a;
+      color: #e0e0e0; padding: 0.9rem; border-radius: 12px;
+      font-size: 1.2rem; font-weight: 700; text-align: center;
+      letter-spacing: 0.3em; outline: none;
+    }
+    .join-row input:focus { border-color: #4895EF; }
+    .join-row input::placeholder { letter-spacing: 0.1em; font-size: 0.8rem; color: #444; }
+    .join-row .btn { width: auto; padding: 0.9rem 1.2rem; }
+
+    .divider {
+      display: flex; align-items: center; gap: 1rem;
+      font-size: 0.7rem; color: #333; width: 100%;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #222; }
+
+    /* Waiting Room */
+    .waiting {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 1.5rem; min-height: calc(100dvh - 56px);
+      gap: 1.5rem; text-align: center;
+    }
+    .room-code {
+      font-size: 3rem; font-weight: 900;
+      letter-spacing: 0.3em; color: #4895EF;
+      background: #141414; padding: 0.8rem 2rem;
+      border-radius: 16px; border: 2px solid #1e3a5c;
+    }
+    .room-status { font-size: 0.8rem; color: #555; }
+    .player-list {
+      display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+    }
+    .player-tag {
+      background: #1a1a1a; border: 1px solid #2a2a2a;
+      padding: 0.4rem 0.9rem; border-radius: 999px;
+      font-size: 0.8rem; font-weight: 600;
+    }
+    .player-tag.me { border-color: #4895EF; color: #4895EF; }
+    .player-tag.opponent { border-color: #e8a04c; color: #e8a04c; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+    .waiting-dots { animation: pulse 1.5s infinite; }
+
+    /* Battle */
+    .battle {
+      padding: 1rem 1.2rem; min-height: calc(100dvh - 56px);
+      display: flex; flex-direction: column; gap: 1rem;
     }
 
-    header h1 {
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-
-    .nickname {
-      font-size: 0.75rem;
-      color: #888;
-      background: #1a1a1a;
-      padding: 0.3rem 0.7rem;
-      border-radius: 999px;
-      border: 1px solid #2a2a2a;
-    }
-
-    .nickname span {
-      color: #4895EF;
-      font-weight: 700;
-    }
-
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem 1.2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .msg {
-      max-width: 85%;
-      padding: 0.6rem 0.9rem;
-      border-radius: 12px;
-      font-size: 0.875rem;
-      line-height: 1.5;
-      animation: fadeIn 0.25s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .msg.other {
-      background: #1a1a1a;
-      border: 1px solid #252525;
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-    }
-
-    .msg.mine {
-      background: #1a3a5c;
+    .topic-bar {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
       border: 1px solid #254a70;
-      align-self: flex-end;
-      border-bottom-right-radius: 4px;
+      border-radius: 14px; padding: 1rem 1.2rem; text-align: center;
     }
+    .topic-label { font-size: 0.65rem; color: #4895EF; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; }
+    .topic-text { font-size: 1.2rem; font-weight: 800; margin-top: 0.3rem; }
 
-    .msg-name {
-      font-size: 0.7rem;
-      font-weight: 700;
-      margin-bottom: 0.15rem;
+    .arena { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; flex: 1; }
+
+    .side {
+      background: #111; border: 1px solid #1e1e1e;
+      border-radius: 14px; padding: 1rem; display: flex;
+      flex-direction: column; gap: 0.6rem;
     }
+    .side.mine { border-color: #1e3a5c; }
+    .side.opponent { border-color: #3a2a1a; }
 
-    .msg.other .msg-name { color: #e8a04c; }
-    .msg.mine .msg-name { color: #4895EF; }
-
-    .msg-text {
-      word-break: break-word;
+    .side-header {
+      font-size: 0.7rem; font-weight: 700;
+      padding-bottom: 0.5rem; border-bottom: 1px solid #1e1e1e;
     }
+    .side.mine .side-header { color: #4895EF; }
+    .side.opponent .side-header { color: #e8a04c; }
 
-    .msg-time {
-      font-size: 0.6rem;
-      color: #555;
-      margin-top: 0.2rem;
-      text-align: right;
+    .rank-input {
+      display: flex; align-items: center; gap: 0.5rem;
     }
-
-    .empty {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #333;
-      font-size: 0.8rem;
+    .rank-num {
+      font-size: 1.1rem; font-weight: 800; min-width: 1.8rem; text-align: center;
     }
+    .rank-num.gold { color: #c9a84c; }
+    .rank-num.silver { color: #8a8a8a; }
+    .rank-num.bronze { color: #9a6e3a; }
 
-    .input-area {
-      padding: 0.8rem 1rem;
-      border-top: 1px solid #1e1e1e;
-      display: flex;
-      gap: 0.5rem;
-      flex-shrink: 0;
-      background: #0e0e0e;
+    .rank-input input {
+      flex: 1; background: #1a1a1a; border: 1px solid #252525;
+      color: #e0e0e0; padding: 0.55rem 0.7rem; border-radius: 8px;
+      font-size: 0.85rem; outline: none; font-weight: 600;
     }
+    .rank-input input:focus { border-color: #4895EF; }
 
-    .input-area input {
-      flex: 1;
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      color: #e0e0e0;
-      padding: 0.65rem 0.9rem;
-      border-radius: 10px;
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.2s;
+    .rank-display {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 0;
     }
-
-    .input-area input:focus {
-      border-color: #4895EF;
+    .rank-display-text {
+      font-size: 0.85rem; font-weight: 600; color: #888;
     }
+    .rank-display-text.revealed { color: #e0e0e0; }
+    .rank-display-text.matched { color: #2ecc71; font-weight: 800; }
 
-    .input-area button {
-      background: #4895EF;
-      color: #fff;
-      border: none;
-      padding: 0 1.2rem;
-      border-radius: 10px;
-      font-size: 0.875rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+    .submit-area { padding-top: 0.5rem; }
+
+    /* Results */
+    .results {
+      background: #111; border: 1px solid #1e1e1e;
+      border-radius: 14px; padding: 1.2rem;
     }
+    .results-title {
+      text-align: center; font-size: 0.7rem; font-weight: 700;
+      color: #555; letter-spacing: 0.1em; margin-bottom: 0.8rem;
+      text-transform: uppercase;
+    }
+    .match-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0; font-size: 0.85rem;
+    }
+    .match-badge {
+      font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+    }
+    .match-badge.hit { background: #1a3a2a; color: #2ecc71; border: 1px solid #2ecc71; }
+    .match-badge.miss { background: #1a1a1a; color: #555; border: 1px solid #2a2a2a; }
 
-    .input-area button:hover { background: #3a7bd5; }
-    .input-area button:active { transform: scale(0.96); }
-    .input-area button:disabled { opacity: 0.4; cursor: default; }
+    .match-none { text-align: center; color: #444; font-size: 0.8rem; padding: 1rem 0; }
+
+    .score-display {
+      text-align: center; padding: 1rem 0;
+    }
+    .score-big {
+      font-size: 2.5rem; font-weight: 900;
+    }
+    .score-big.high { color: #2ecc71; }
+    .score-big.mid { color: #e8a04c; }
+    .score-big.low { color: #c0392b; }
+    .score-label { font-size: 0.75rem; color: #555; margin-top: 0.3rem; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .arena { grid-template-columns: 1fr; }
+      .room-code { font-size: 2.2rem; padding: 0.6rem 1.5rem; }
+    }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>⚔️ Ranking Battle</h1>
-    <div class="nickname">あなた: <span id="my-name"></span></div>
-  </header>
+<div class="header">
+  <h1>⚔️ Ranking Battle</h1>
+  <div class="header-name">あなた: <span id="my-name"></span></div>
+</div>
 
-  <div class="messages" id="messages">
-    <div class="empty">メッセージがありません。最初の一言を送ろう！</div>
+<!-- Screen: Lobby -->
+<div class="screen active" id="screen-lobby">
+  <div class="lobby">
+    <div class="lobby-title">⚔️</div>
+    <div>
+      <div style="text-align:center;font-size:1.3rem;font-weight:800;">ランキングバトル</div>
+      <div class="lobby-sub">お題に合わせてトップ3を入力。一致したら勝ち！</div>
+    </div>
+    <div class="lobby-actions">
+      <button class="btn btn-primary" id="btn-create">🏟️ ルームを作成</button>
+      <div class="divider">または</div>
+      <div class="join-row">
+        <input type="text" id="input-room-id" placeholder="ルームID" maxlength="4" />
+        <button class="btn btn-secondary" id="btn-join">参加</button>
+      </div>
+    </div>
   </div>
+</div>
 
-  <div class="input-area">
-    <input type="text" id="input" placeholder="メッセージを入力..." autocomplete="off" />
-    <button id="send" disabled>送信</button>
+<!-- Screen: Waiting -->
+<div class="screen" id="screen-waiting">
+  <div class="waiting">
+    <div style="font-size:0.75rem;color:#555;font-weight:600;letter-spacing:0.1em;">ROOM ID</div>
+    <div class="room-code" id="room-code">----</div>
+    <div class="room-status" id="room-status">
+      <span class="waiting-dots">相手を待っています...</span>
+    </div>
+    <div class="player-list" id="player-list"></div>
+    <button class="btn btn-gold" id="btn-start" style="max-width:280px;display:none;">⚔️ バトル開始！</button>
+    <button class="btn btn-secondary" id="btn-leave" style="max-width:200px;margin-top:1rem;">退出する</button>
   </div>
+</div>
 
-  <script>
-    const SUPABASE_URL = 'https://equkrfpjlvovkzsmztwl.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_Pl_UoNLCNidZzW4z0Ou1Sw_U-sXIzfq';
+<!-- Screen: Battle -->
+<div class="screen" id="screen-battle">
+  <div class="battle">
+    <div class="topic-bar">
+      <div class="topic-label">📋 お題</div>
+      <div class="topic-text" id="topic-text">---</div>
+    </div>
 
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <div class="arena">
+      <!-- My side -->
+      <div class="side mine">
+        <div class="side-header">🟦 <span id="my-side-name">あなた</span></div>
+        <div id="my-inputs"></div>
+        <div class="submit-area" id="my-submit-area">
+          <button class="btn btn-primary" id="btn-submit">✅ 決定</button>
+        </div>
+      </div>
+      <!-- Opponent side -->
+      <div class="side opponent">
+        <div class="side-header">🟧 <span id="opp-side-name">相手</span></div>
+        <div id="opp-slots"></div>
+        <div id="opp-status" style="text-align:center;padding:0.5rem 0;font-size:0.75rem;color:#555;"></div>
+      </div>
+    </div>
 
-    // ランダムニックネーム生成
-    const adjectives = ['最強の', '伝説の', '光速の', '無敵の', '孤高の', '漆黒の', '覚醒した', '不屈の', '天才', '爆速の', '静かなる', '情熱の', '鋼の', '疾風の', '紅蓮の'];
-    const nouns = ['戦士', 'ランカー', 'チャレンジャー', '賢者', '勇者', '審判者', '探求者', '支配者', '冒険者', '守護者', '破壊者', '観測者', '創造者', '旅人', '剣士'];
+    <div class="results" id="results-area" style="display:none;">
+      <div class="results-title">⚔️ 結果</div>
+      <div class="score-display" id="score-display"></div>
+      <div id="match-list"></div>
+      <div style="margin-top:1rem;">
+        <button class="btn btn-gold" id="btn-next">🔄 次のお題</button>
+      </div>
+      <div style="margin-top:0.5rem;">
+        <button class="btn btn-secondary" id="btn-back-lobby">🏠 ロビーに戻る</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function generateNickname() {
-      const saved = localStorage.getItem('ranking-battle-name');
-      if (saved) return saved;
-      const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-      const noun = nouns[Math.floor(Math.random() * nouns.length)];
-      const name = adj + noun;
-      localStorage.setItem('ranking-battle-name', name);
-      return name;
+<script>
+const SUPABASE_URL = 'https://equkrfpjlvovkzsmztwl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Pl_UoNLCNidZzW4z0Ou1Sw_U-sXIzfq';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- Nickname ---
+const ADJ = ['最強の','伝説の','光速の','無敵の','孤高の','漆黒の','覚醒した','不屈の','天才','爆速の','静かなる','情熱の','鋼の','疾風の','紅蓮の'];
+const NOUN = ['戦士','ランカー','チャレンジャー','賢者','勇者','審判者','探求者','支配者','冒険者','守護者','破壊者','観測者','創造者','旅人','剣士'];
+function genName() {
+  const s = localStorage.getItem('ranking-battle-name');
+  if (s) return s;
+  const n = ADJ[Math.floor(Math.random()*ADJ.length)] + NOUN[Math.floor(Math.random()*NOUN.length)];
+  localStorage.setItem('ranking-battle-name', n);
+  return n;
+}
+const myName = genName();
+document.getElementById('my-name').textContent = myName;
+document.getElementById('my-side-name').textContent = myName;
+
+// --- Topics ---
+const TOPICS = [
+  { emoji: '🎬', text: '好きな映画 トップ3は？' },
+  { emoji: '🎵', text: '好きな曲・アーティスト トップ3は？' },
+  { emoji: '🎮', text: '好きなゲーム トップ3は？' },
+  { emoji: '🍜', text: '好きな食べ物 トップ3は？' },
+  { emoji: '✈️', text: '行きたい旅行先 トップ3は？' },
+  { emoji: '📺', text: '好きなドラマ・アニメ トップ3は？' },
+  { emoji: '📚', text: '好きな本・マンガ トップ3は？' },
+  { emoji: '⚽', text: '好きなスポーツ選手 トップ3は？' },
+];
+
+// --- State ---
+let roomId = null;
+let channel = null;
+let isHost = false;
+let opponentName = null;
+let currentTopic = null;
+let myAnswers = null;
+let oppAnswers = null;
+let submitted = false;
+
+// --- Screen management ---
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// --- Helpers ---
+function genRoomId() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+function escapeHtml(t) {
+  const d = document.createElement('div'); d.textContent = t; return d.innerHTML;
+}
+function normalize(s) { return s.trim().toLowerCase(); }
+
+// --- Build rank inputs ---
+function buildMyInputs() {
+  const c = document.getElementById('my-inputs');
+  const medals = ['🥇','🥈','🥉'];
+  const classes = ['gold','silver','bronze'];
+  c.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    c.innerHTML += `
+      <div class="rank-input">
+        <div class="rank-num ${classes[i]}">${medals[i]}</div>
+        <input type="text" id="answer-${i}" placeholder="${i+1}位" autocomplete="off" />
+      </div>`;
+  }
+}
+
+function buildOppSlots(revealed) {
+  const c = document.getElementById('opp-slots');
+  const medals = ['🥇','🥈','🥉'];
+  const classes = ['gold','silver','bronze'];
+  c.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const text = revealed && oppAnswers ? oppAnswers[i] : '？？？';
+    const matched = revealed && oppAnswers && myAnswers &&
+      myAnswers.some(a => normalize(a) === normalize(oppAnswers[i]));
+    const cls = revealed ? (matched ? 'revealed matched' : 'revealed') : '';
+    c.innerHTML += `
+      <div class="rank-display">
+        <div class="rank-num ${classes[i]}">${medals[i]}</div>
+        <div class="rank-display-text ${cls}">${escapeHtml(text)}</div>
+      </div>`;
+  }
+}
+
+// --- Presence channel ---
+function joinRoom(id) {
+  roomId = id;
+  document.getElementById('room-code').textContent = roomId;
+  showScreen('waiting');
+
+  channel = sb.channel('room-' + roomId, { config: { presence: { key: myName } } });
+
+  channel.on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState();
+    const players = Object.keys(state);
+    renderPlayers(players);
+
+    // Find opponent
+    const opp = players.find(p => p !== myName);
+    opponentName = opp || null;
+    document.getElementById('opp-side-name').textContent = opponentName || '相手';
+
+    if (players.length >= 2) {
+      document.getElementById('room-status').innerHTML = '✅ 2人揃いました！';
+      if (isHost) document.getElementById('btn-start').style.display = 'block';
+    } else {
+      document.getElementById('room-status').innerHTML = '<span class="waiting-dots">相手を待っています...</span>';
+      document.getElementById('btn-start').style.display = 'none';
     }
+  });
 
-    const myName = generateNickname();
-    document.getElementById('my-name').textContent = myName;
+  channel.on('broadcast', { event: 'start' }, ({ payload }) => {
+    currentTopic = payload.topic;
+    startBattle();
+  });
 
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
-    let hasMessages = false;
-
-    function formatTime(ts) {
-      const d = new Date(ts);
-      return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  channel.on('broadcast', { event: 'answer' }, ({ payload }) => {
+    if (payload.name !== myName) {
+      oppAnswers = payload.answers;
+      document.getElementById('opp-status').textContent = '✅ 決定済み';
+      if (submitted) revealResults();
     }
+  });
 
-    function appendMessage(msg) {
-      if (!hasMessages) {
-        messagesEl.innerHTML = '';
-        hasMessages = true;
-      }
-      const isMine = msg.nickname === myName;
-      const div = document.createElement('div');
-      div.className = `msg ${isMine ? 'mine' : 'other'}`;
-      div.innerHTML = `
-        <div class="msg-name">${msg.nickname}</div>
-        <div class="msg-text">${escapeHtml(msg.content)}</div>
-        <div class="msg-time">${formatTime(msg.created_at)}</div>
-      `;
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+  channel.on('broadcast', { event: 'next' }, ({ payload }) => {
+    currentTopic = payload.topic;
+    startBattle();
+  });
+
+  channel.subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ name: myName });
     }
+  });
+}
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+function renderPlayers(players) {
+  const c = document.getElementById('player-list');
+  c.innerHTML = players.map(p =>
+    `<div class="player-tag ${p === myName ? 'me' : 'opponent'}">${escapeHtml(p)}</div>`
+  ).join('');
+}
+
+function leaveRoom() {
+  if (channel) { channel.unsubscribe(); channel = null; }
+  roomId = null; isHost = false; opponentName = null;
+  currentTopic = null; myAnswers = null; oppAnswers = null; submitted = false;
+  document.getElementById('btn-start').style.display = 'none';
+  showScreen('lobby');
+}
+
+// --- Battle ---
+function startBattle() {
+  myAnswers = null; oppAnswers = null; submitted = false;
+  document.getElementById('topic-text').textContent = currentTopic.emoji + ' ' + currentTopic.text;
+  buildMyInputs();
+  buildOppSlots(false);
+  document.getElementById('opp-status').textContent = '⏳ 回答中...';
+  document.getElementById('my-submit-area').style.display = 'block';
+  document.getElementById('results-area').style.display = 'none';
+  showScreen('battle');
+}
+
+function submitAnswers() {
+  const answers = [];
+  for (let i = 0; i < 3; i++) {
+    const v = document.getElementById('answer-' + i).value.trim();
+    if (!v) { alert((i+1) + '位を入力してください'); return; }
+    answers.push(v);
+  }
+  myAnswers = answers;
+  submitted = true;
+
+  // Disable inputs
+  for (let i = 0; i < 3; i++) document.getElementById('answer-' + i).disabled = true;
+  document.getElementById('my-submit-area').style.display = 'none';
+
+  // Broadcast
+  channel.send({ type: 'broadcast', event: 'answer', payload: { name: myName, answers: myAnswers } });
+
+  // Save to DB
+  sb.from('battle_answers').insert({
+    room_id: roomId,
+    nickname: myName,
+    topic: currentTopic.text,
+    answer_1: myAnswers[0],
+    answer_2: myAnswers[1],
+    answer_3: myAnswers[2],
+  });
+
+  if (oppAnswers) revealResults();
+}
+
+function revealResults() {
+  buildOppSlots(true);
+  document.getElementById('opp-status').textContent = '';
+
+  // Find matches
+  const myNorm = myAnswers.map(normalize);
+  const oppNorm = oppAnswers.map(normalize);
+  const matches = [];
+  for (let i = 0; i < 3; i++) {
+    const oppIdx = oppNorm.indexOf(myNorm[i]);
+    if (oppIdx !== -1) {
+      matches.push({ title: myAnswers[i], myRank: i + 1, oppRank: oppIdx + 1 });
     }
+  }
 
-    // 既存メッセージを読み込み
-    async function loadMessages() {
-      const { data } = await sb
-        .from('battle_messages')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(100);
-
-      if (data && data.length > 0) {
-        data.forEach(appendMessage);
-      }
+  // Highlight my matching inputs
+  for (let i = 0; i < 3; i++) {
+    const inp = document.getElementById('answer-' + i);
+    if (myNorm[i] && oppNorm.includes(myNorm[i])) {
+      inp.style.borderColor = '#2ecc71';
+      inp.style.color = '#2ecc71';
     }
+  }
 
-    // Realtime購読
-    function subscribeRealtime() {
-      sb
-        .channel('battle_messages_realtime')
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'battle_messages',
-        }, (payload) => {
-          appendMessage(payload.new);
-        })
-        .subscribe();
-    }
-
-    // メッセージ送信
-    async function sendMessage() {
-      const content = inputEl.value.trim();
-      if (!content) return;
-
-      sendBtn.disabled = true;
-      inputEl.value = '';
-
-      await sb.from('battle_messages').insert({
-        nickname: myName,
-        content: content,
-      });
-
-      sendBtn.disabled = false;
-      inputEl.focus();
-    }
-
-    inputEl.addEventListener('input', () => {
-      sendBtn.disabled = !inputEl.value.trim();
+  // Score: 0-3 matches, bonus for same rank
+  let score = 0;
+  if (matches.length > 0) {
+    matches.forEach(m => {
+      score += 1; // base
+      if (m.myRank === m.oppRank) score += 0.5; // rank bonus
     });
+  }
+  const pct = Math.round((score / 4.5) * 100);
 
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.isComposing && inputEl.value.trim()) {
-        sendMessage();
-      }
-    });
+  // Render
+  const sd = document.getElementById('score-display');
+  const cls = pct >= 60 ? 'high' : pct >= 30 ? 'mid' : 'low';
+  const msg = pct >= 60 ? '🔥 趣味が合いすぎ！' : pct >= 30 ? '✨ なかなか合うね！' : '🌈 個性的な組み合わせ！';
+  sd.innerHTML = `<div class="score-big ${cls}">${pct}%</div><div class="score-label">${msg}</div>`;
 
-    sendBtn.addEventListener('click', sendMessage);
+  const ml = document.getElementById('match-list');
+  if (matches.length === 0) {
+    ml.innerHTML = '<div class="match-none">一致なし...次は合うかも！</div>';
+  } else {
+    ml.innerHTML = matches.map(m =>
+      `<div class="match-row">
+        <div class="match-badge hit">MATCH</div>
+        <div style="flex:1;font-weight:700;">${escapeHtml(m.title)}</div>
+        <div style="font-size:0.7rem;color:#666;">${m.myRank}位 ↔ ${m.oppRank}位</div>
+      </div>`
+    ).join('');
+  }
 
-    // 初期化
-    loadMessages();
-    subscribeRealtime();
-  </script>
+  // Show unmatched
+  for (let i = 0; i < 3; i++) {
+    if (!oppNorm.includes(myNorm[i]) && myAnswers[i]) {
+      ml.innerHTML += `<div class="match-row">
+        <div class="match-badge miss">MISS</div>
+        <div style="flex:1;color:#555;">${escapeHtml(myAnswers[i])}</div>
+        <div style="font-size:0.7rem;color:#333;">あなたの${i+1}位</div>
+      </div>`;
+    }
+  }
+
+  document.getElementById('results-area').style.display = 'block';
+}
+
+// --- Event Listeners ---
+document.getElementById('btn-create').addEventListener('click', () => {
+  isHost = true;
+  joinRoom(genRoomId());
+});
+
+document.getElementById('btn-join').addEventListener('click', () => {
+  const id = document.getElementById('input-room-id').value.trim();
+  if (id.length !== 4) { alert('4桁のルームIDを入力してください'); return; }
+  isHost = false;
+  joinRoom(id);
+});
+
+document.getElementById('input-room-id').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-join').click();
+});
+
+document.getElementById('btn-leave').addEventListener('click', leaveRoom);
+
+document.getElementById('btn-start').addEventListener('click', () => {
+  const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+  channel.send({ type: 'broadcast', event: 'start', payload: { topic } });
+  currentTopic = topic;
+  startBattle();
+});
+
+document.getElementById('btn-submit').addEventListener('click', submitAnswers);
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+  channel.send({ type: 'broadcast', event: 'next', payload: { topic } });
+  currentTopic = topic;
+  startBattle();
+});
+
+document.getElementById('btn-back-lobby').addEventListener('click', leaveRoom);
+</script>
 </body>
 </html>
