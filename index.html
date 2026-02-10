@@ -174,7 +174,7 @@
     const SUPABASE_URL = 'https://equkrfpjlvovkzsmztwl.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_Pl_UoNLCNidZzW4z0Ou1Sw_U-sXIzfq';
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ランダムニックネーム生成
     const adjectives = ['最強の', '伝説の', '光速の', '無敵の', '孤高の', '漆黒の', '覚醒した', '不屈の', '天才', '爆速の', '静かなる', '情熱の', '鋼の', '疾風の', '紅蓮の'];
@@ -228,7 +228,7 @@
 
     // 既存メッセージを読み込み
     async function loadMessages() {
-      const { data } = await supabase
+      const { data } = await sb
         .from('battle_messages')
         .select('*')
         .order('created_at', { ascending: true })
@@ -241,7 +241,7 @@
 
     // Realtime購読
     function subscribeRealtime() {
-      supabase
+      sb
         .channel('battle_messages_realtime')
         .on('postgres_changes', {
           event: 'INSERT',
@@ -261,7 +261,7 @@
       sendBtn.disabled = true;
       inputEl.value = '';
 
-      await supabase.from('battle_messages').insert({
+      await sb.from('battle_messages').insert({
         nickname: myName,
         content: content,
       });
