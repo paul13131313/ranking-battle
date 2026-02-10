@@ -192,6 +192,26 @@
       position: fixed; inset: 0; z-index: 8000; pointer-events: none;
     }
 
+    /* Invite link copy button */
+    .btn-copy {
+      background: #1a1a2e; color: #4895EF; border: 1px solid #254a70;
+      font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 8px;
+      cursor: pointer; transition: all 0.2s; font-weight: 600;
+    }
+    .btn-copy:hover { background: #254a70; }
+    .btn-copy.copied { background: #1a3a2a; color: #2ecc71; border-color: #2ecc71; }
+
+    /* Notification permission banner */
+    .notif-banner {
+      background: #1a1a2e; border: 1px solid #254a70; border-radius: 10px;
+      padding: 0.6rem 1rem; font-size: 0.75rem; color: #8ab4f8;
+      display: flex; align-items: center; gap: 0.6rem; max-width: 320px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .notif-banner:hover { background: #254a70; }
+    .notif-banner.granted { border-color: #2ecc71; color: #2ecc71; cursor: default; }
+    .notif-banner.denied { border-color: #555; color: #555; cursor: default; }
+
     @media (max-width: 600px) {
       .arena { grid-template-columns: 1fr; }
       .room-code { font-size: 2.2rem; padding: 0.6rem 1.5rem; }
@@ -229,8 +249,12 @@
   <div class="waiting">
     <div style="font-size:0.75rem;color:#555;font-weight:600;letter-spacing:0.1em;">ROOM ID</div>
     <div class="room-code" id="room-code">----</div>
+    <button class="btn-copy" id="btn-copy-invite">📋 招待リンクをコピー</button>
     <div class="room-status" id="room-status"><span class="waiting-dots">相手を待っています...</span></div>
     <div class="player-list" id="player-list"></div>
+    <div class="notif-banner" id="notif-banner" style="display:none;">
+      🔔 <span id="notif-banner-text">通知をONにして対戦の更新を受け取る</span>
+    </div>
     <button class="btn btn-gold" id="btn-start" style="max-width:280px;display:none;">⚔️ バトル開始！</button>
     <button class="btn btn-secondary" id="btn-leave" style="max-width:200px;margin-top:1rem;">退出する</button>
   </div>
@@ -522,6 +546,8 @@ function joinRoom(id) {
   roomId = id;
   document.getElementById('room-code').textContent = roomId;
   showScreen('waiting');
+  updateNotifBanner();
+  requestNotifPermission();
 
   channel = sb.channel('room-' + roomId, { config: { presence: { key: myName } } });
 
@@ -529,11 +555,13 @@ function joinRoom(id) {
     const players = Object.keys(channel.presenceState());
     renderPlayers(players);
     const opp = players.find(p => p !== myName);
+    const prevOpp = opponentName;
     opponentName = opp || null;
     document.getElementById('opp-side-name').textContent = opponentName || '相手';
     if (players.length >= 2) {
       document.getElementById('room-status').innerHTML = '✅ 2人揃いました！';
       if (isHost) document.getElementById('btn-start').style.display = 'block';
+      if (opp && !prevOpp) sendNotification('対戦相手が見つかりました！', opp + 'さんがルームに参加しました', 'join-' + roomId);
     } else {
       document.getElementById('room-status').innerHTML = '<span class="waiting-dots">相手を待っています...</span>';
       document.getElementById('btn-start').style.display = 'none';
@@ -548,6 +576,9 @@ function joinRoom(id) {
       oppAnswers = payload.answers;
       document.getElementById('opp-typing').innerHTML = '';
       document.getElementById('opp-status').textContent = '✅ 決定済み';
+      if (!submitted) {
+        sendNotification('相手が回答しました！', 'あなたの番です - 回答を入力してください', 'answer-' + roomId);
+      }
       if (submitted) triggerReveal();
     }
   });
@@ -688,9 +719,68 @@ function revealResults() {
 
   document.getElementById('results-area').style.display = 'block';
 
+  // Notification for results
+  sendNotification('結果: ' + pct + '%マッチ！', msg + ' ' + matches.length + '個一致', 'result-' + roomId);
+
   // Confetti for high scores
   if (pct >= 80) setTimeout(launchConfetti, 600);
 }
+
+// ========== Notifications ==========
+function sendNotification(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible' && document.hasFocus()) return;
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚔️</text></svg>',
+      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚔️</text></svg>',
+      tag: tag || 'ranking-battle',
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { /* ignore */ }
+}
+
+function updateNotifBanner() {
+  const banner = document.getElementById('notif-banner');
+  const text = document.getElementById('notif-banner-text');
+  if (!('Notification' in window)) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  if (Notification.permission === 'granted') {
+    banner.className = 'notif-banner granted';
+    text.textContent = '通知ON - 対戦の更新を受け取ります';
+  } else if (Notification.permission === 'denied') {
+    banner.className = 'notif-banner denied';
+    text.textContent = '通知がブロックされています';
+  } else {
+    banner.className = 'notif-banner';
+    text.textContent = '通知をONにして対戦の更新を受け取る';
+  }
+}
+
+function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(updateNotifBanner);
+  }
+}
+
+document.getElementById('notif-banner').addEventListener('click', () => {
+  if (Notification.permission === 'default') requestNotifPermission();
+});
+
+// ========== Invite Link ==========
+document.getElementById('btn-copy-invite').addEventListener('click', () => {
+  const url = location.origin + location.pathname + '?room=' + roomId;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('btn-copy-invite');
+    btn.textContent = '✅ コピーしました！';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 招待リンクをコピー'; btn.classList.remove('copied'); }, 2000);
+  });
+});
 
 // ========== Event Listeners ==========
 document.getElementById('btn-create').addEventListener('click', () => { isHost = true; joinRoom(genRoomId()); });
@@ -722,6 +812,17 @@ document.getElementById('btn-next').addEventListener('click', () => {
 });
 
 document.getElementById('btn-back-lobby').addEventListener('click', leaveRoom);
+
+// ========== Auto-join from invite link ==========
+(function() {
+  const params = new URLSearchParams(location.search);
+  const inviteRoom = params.get('room');
+  if (inviteRoom && /^\d{4}$/.test(inviteRoom)) {
+    isHost = false;
+    joinRoom(inviteRoom);
+    history.replaceState(null, '', location.pathname);
+  }
+})();
 </script>
 </body>
 </html>
