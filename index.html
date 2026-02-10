@@ -1,828 +1,365 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚔️ Ranking Battle</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MY RANKING — Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0c;
+      --bg-card: #141418;
+      --bg-card-hover: #1a1a22;
+      --border: #2a2a32;
+      --text: #e8e6e3;
+      --text-muted: #8a8890;
+      --accent: #f0c040;
+      --accent-dim: rgba(240, 192, 64, 0.12);
+      --success: #40c080;
+      --radius: 14px;
+      --serif: 'DM Serif Display', Georgia, serif;
+      --sans: 'Outfit', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0a0a0a;
-      color: #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-height: 100dvh;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
       overflow-x: hidden;
     }
 
-    .header {
-      padding: 1rem 1.2rem;
-      border-bottom: 1px solid #1a1a1a;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .header h1 { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.02em; }
-    .header-name {
-      font-size: 0.7rem; color: #666;
-      background: #141414; padding: 0.25rem 0.6rem;
-      border-radius: 999px; border: 1px solid #222;
-    }
-    .header-name span { color: #4895EF; font-weight: 700; }
-
-    .screen { display: none; }
-    .screen.active { display: block; }
-
-    /* Lobby */
-    .lobby {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 3rem 1.5rem; min-height: calc(100dvh - 56px); gap: 2rem;
-    }
-    .lobby-title { font-size: 3rem; line-height: 1; }
-    .lobby-sub { font-size: 0.8rem; color: #555; text-align: center; }
-    .lobby-actions { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; max-width: 320px; }
-
-    .btn {
-      display: block; width: 100%; padding: 0.9rem;
-      border: none; border-radius: 12px;
-      font-size: 0.9rem; font-weight: 700;
-      cursor: pointer; transition: all 0.2s; text-align: center;
-    }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; cursor: default; transform: none; }
-    .btn-primary { background: #4895EF; color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: #3a7bd5; }
-    .btn-secondary { background: #1a1a1a; color: #ccc; border: 1px solid #2a2a2a; }
-    .btn-secondary:hover:not(:disabled) { background: #222; }
-    .btn-gold { background: linear-gradient(135deg, #c9a84c, #e8c84c); color: #1a1a1a; font-size: 1rem; }
-    .btn-gold:hover:not(:disabled) { background: linear-gradient(135deg, #b8973f, #d4b63f); }
-
-    .join-row { display: flex; gap: 0.5rem; }
-    .join-row input {
-      flex: 1; background: #141414; border: 1px solid #2a2a2a;
-      color: #e0e0e0; padding: 0.9rem; border-radius: 12px;
-      font-size: 1.2rem; font-weight: 700; text-align: center;
-      letter-spacing: 0.3em; outline: none;
-    }
-    .join-row input:focus { border-color: #4895EF; }
-    .join-row input::placeholder { letter-spacing: 0.1em; font-size: 0.8rem; color: #444; }
-    .join-row .btn { width: auto; padding: 0.9rem 1.2rem; }
-
-    .divider { display: flex; align-items: center; gap: 1rem; font-size: 0.7rem; color: #333; width: 100%; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #222; }
-
-    /* Waiting */
-    .waiting {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 3rem 1.5rem; min-height: calc(100dvh - 56px);
-      gap: 1.5rem; text-align: center;
-    }
-    .room-code {
-      font-size: 3rem; font-weight: 900; letter-spacing: 0.3em; color: #4895EF;
-      background: #141414; padding: 0.8rem 2rem; border-radius: 16px; border: 2px solid #1e3a5c;
-    }
-    .room-status { font-size: 0.8rem; color: #555; }
-    .player-list { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
-    .player-tag {
-      background: #1a1a1a; border: 1px solid #2a2a2a;
-      padding: 0.4rem 0.9rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
-    }
-    .player-tag.me { border-color: #4895EF; color: #4895EF; }
-    .player-tag.opponent { border-color: #e8a04c; color: #e8a04c; }
-
-    @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
-    .waiting-dots { animation: pulse 1.5s infinite; }
-
-    /* Battle */
-    .battle { padding: 1rem 1.2rem; min-height: calc(100dvh - 56px); display: flex; flex-direction: column; gap: 1rem; }
-    .topic-bar {
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      border: 1px solid #254a70; border-radius: 14px; padding: 1rem 1.2rem; text-align: center;
-    }
-    .topic-label { font-size: 0.65rem; color: #4895EF; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; }
-    .topic-text { font-size: 1.2rem; font-weight: 800; margin-top: 0.3rem; }
-
-    .arena { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; flex: 1; }
-    .side {
-      background: #111; border: 1px solid #1e1e1e;
-      border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem;
-    }
-    .side.mine { border-color: #1e3a5c; }
-    .side.opponent { border-color: #3a2a1a; }
-    .side-header { font-size: 0.7rem; font-weight: 700; padding-bottom: 0.5rem; border-bottom: 1px solid #1e1e1e; }
-    .side.mine .side-header { color: #4895EF; }
-    .side.opponent .side-header { color: #e8a04c; }
-
-    .rank-input { display: flex; align-items: center; gap: 0.5rem; }
-    .rank-num { font-size: 1.1rem; font-weight: 800; min-width: 1.8rem; text-align: center; }
-    .rank-num.gold { color: #c9a84c; }
-    .rank-num.silver { color: #8a8a8a; }
-    .rank-num.bronze { color: #9a6e3a; }
-    .rank-input input {
-      flex: 1; background: #1a1a1a; border: 1px solid #252525;
-      color: #e0e0e0; padding: 0.55rem 0.7rem; border-radius: 8px;
-      font-size: 0.85rem; outline: none; font-weight: 600;
-    }
-    .rank-input input:focus { border-color: #4895EF; }
-
-    .rank-display { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0; }
-    .rank-display-text { font-size: 0.85rem; font-weight: 600; color: #888; }
-    .rank-display-text.revealed { color: #e0e0e0; }
-    .rank-display-text.matched { color: #2ecc71; font-weight: 800; }
-
-    .submit-area { padding-top: 0.5rem; }
-
-    .my-waiting-msg {
-      text-align: center; padding: 0.8rem 0; font-size: 0.8rem; color: #4895EF;
+    /* Subtle grid bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(240,192,64,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,192,64,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
     }
 
-    /* Typing indicator */
-    .typing-indicator { font-size: 0.7rem; color: #e8a04c; min-height: 1.2em; }
-    @keyframes typingDots { 0%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }
-    .typing-indicator .dot { animation: typingDots 1.2s infinite; display: inline-block; }
-    .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
-
-    /* Results */
-    .results { background: #111; border: 1px solid #1e1e1e; border-radius: 14px; padding: 1.2rem; }
-    .results-title { text-align: center; font-size: 0.7rem; font-weight: 700; color: #555; letter-spacing: 0.1em; margin-bottom: 0.8rem; text-transform: uppercase; }
-    .match-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0; font-size: 0.85rem; }
-    .match-badge { font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; }
-    .match-badge.hit { background: #1a3a2a; color: #2ecc71; border: 1px solid #2ecc71; }
-    .match-badge.miss { background: #1a1a1a; color: #555; border: 1px solid #2a2a2a; }
-    .match-none { text-align: center; color: #444; font-size: 0.8rem; padding: 1rem 0; }
-
-    .score-display { text-align: center; padding: 1rem 0; }
-    .score-big { font-size: 2.5rem; font-weight: 900; }
-    .score-big.high { color: #2ecc71; }
-    .score-big.mid { color: #e8a04c; }
-    .score-big.low { color: #c0392b; }
-    .score-label { font-size: 0.75rem; color: #555; margin-top: 0.3rem; }
-
-    /* Sparkle on MATCH rows */
-    @keyframes sparkle {
-      0% { text-shadow: 0 0 4px rgba(46,204,113,0.3); }
-      50% { text-shadow: 0 0 12px rgba(46,204,113,0.8), 0 0 24px rgba(46,204,113,0.4); }
-      100% { text-shadow: 0 0 4px rgba(46,204,113,0.3); }
-    }
-    .match-row.sparkle > div:nth-child(2) { animation: sparkle 1.5s ease-in-out infinite; color: #2ecc71; }
-
-    /* Countdown overlay */
-    .countdown-overlay {
-      position: fixed; inset: 0; z-index: 9000;
-      background: rgba(0,0,0,0.85);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s;
-    }
-    .countdown-overlay.active { opacity: 1; visibility: visible; }
-    .countdown-num {
-      font-size: 6rem; font-weight: 900; color: #fff;
-      animation: countPop 0.7s ease;
-    }
-    @keyframes countPop {
-      0% { transform: scale(2.5); opacity: 0; }
-      40% { transform: scale(0.9); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .countdown-num.go { color: #e8c84c; font-size: 3rem; }
-
-    /* Confetti canvas */
-    #confetti-canvas {
-      position: fixed; inset: 0; z-index: 8000; pointer-events: none;
+    .wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+      position: relative;
+      z-index: 1;
     }
 
-    /* Invite link copy button */
-    .btn-copy {
-      background: #1a1a2e; color: #4895EF; border: 1px solid #254a70;
-      font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 8px;
-      cursor: pointer; transition: all 0.2s; font-weight: 600;
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 3rem 0 2.5rem;
     }
-    .btn-copy:hover { background: #254a70; }
-    .btn-copy.copied { background: #1a3a2a; color: #2ecc71; border-color: #2ecc71; }
 
-    /* Notification permission banner */
-    .notif-banner {
-      background: #1a1a2e; border: 1px solid #254a70; border-radius: 10px;
-      padding: 0.6rem 1rem; font-size: 0.75rem; color: #8ab4f8;
-      display: flex; align-items: center; gap: 0.6rem; max-width: 320px;
-      cursor: pointer; transition: all 0.2s;
+    .hero-logo {
+      font-family: var(--serif);
+      font-size: 3rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.25rem;
     }
-    .notif-banner:hover { background: #254a70; }
-    .notif-banner.granted { border-color: #2ecc71; color: #2ecc71; cursor: default; }
-    .notif-banner.denied { border-color: #555; color: #555; cursor: default; }
 
-    @media (max-width: 600px) {
-      .arena { grid-template-columns: 1fr; }
-      .room-code { font-size: 2.2rem; padding: 0.6rem 1.5rem; }
+    .hero-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
     }
+
+    .hero-line {
+      width: 60px;
+      height: 2px;
+      background: var(--accent);
+      margin: 1.5rem auto 0;
+      border-radius: 2px;
+    }
+
+    /* Service cards */
+    .services {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .service-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .service-card:hover {
+      border-color: var(--accent);
+      background: var(--bg-card-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(240, 192, 64, 0.06);
+    }
+
+    .service-icon {
+      font-size: 1.8rem;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-dim);
+      border-radius: 12px;
+      flex-shrink: 0;
+    }
+
+    .service-info { flex: 1; min-width: 0; }
+
+    .service-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .service-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 300;
+      line-height: 1.4;
+    }
+
+    .service-arrow {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .service-card:hover .service-arrow {
+      color: var(--accent);
+      transform: translateX(2px);
+    }
+
+    /* Category label */
+    .category-label {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      margin-top: 1.5rem;
+      padding-left: 0.25rem;
+      font-weight: 600;
+    }
+
+    .category-label:first-of-type {
+      margin-top: 0;
+    }
+
+    /* Status indicator */
+    .status-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .status-dot.error {
+      background: #e05050;
+    }
+
+    .status-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-link {
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .status-link:hover { text-decoration: underline; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-logo {
+      font-family: var(--serif);
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .footer-copy {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .footer-links a {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover { color: var(--accent); }
   </style>
 </head>
 <body>
-
-<div class="header">
-  <h1>⚔️ Ranking Battle</h1>
-  <div class="header-name">あなた: <span id="my-name"></span></div>
-</div>
-
-<!-- Lobby -->
-<div class="screen active" id="screen-lobby">
-  <div class="lobby">
-    <div class="lobby-title">⚔️</div>
-    <div>
-      <div style="text-align:center;font-size:1.3rem;font-weight:800;">ランキングバトル</div>
-      <div class="lobby-sub">お題に合わせてトップ3を入力。一致したら勝ち！</div>
+  <div class="wrap">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-logo">MY RANKING</div>
+      <div class="hero-sub">your favorites, ranked</div>
+      <div class="hero-line"></div>
     </div>
-    <div class="lobby-actions">
-      <button class="btn btn-primary" id="btn-create">🏟️ ルームを作成</button>
-      <div class="divider">または</div>
-      <div class="join-row">
-        <input type="text" id="input-room-id" placeholder="ルームID" maxlength="4" />
-        <button class="btn btn-secondary" id="btn-join">参加</button>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="status-left">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">チェック中...</span>
       </div>
+      <a href="status.html" class="status-link">詳細を見る →</a>
     </div>
-  </div>
-</div>
 
-<!-- Waiting -->
-<div class="screen" id="screen-waiting">
-  <div class="waiting">
-    <div style="font-size:0.75rem;color:#555;font-weight:600;letter-spacing:0.1em;">ROOM ID</div>
-    <div class="room-code" id="room-code">----</div>
-    <button class="btn-copy" id="btn-copy-invite">📋 招待リンクをコピー</button>
-    <div class="room-status" id="room-status"><span class="waiting-dots">相手を待っています...</span></div>
-    <div class="player-list" id="player-list"></div>
-    <div class="notif-banner" id="notif-banner" style="display:none;">
-      🔔 <span id="notif-banner-text">通知をONにして対戦の更新を受け取る</span>
-    </div>
-    <button class="btn btn-gold" id="btn-start" style="max-width:280px;display:none;">⚔️ バトル開始！</button>
-    <button class="btn btn-secondary" id="btn-leave" style="max-width:200px;margin-top:1rem;">退出する</button>
-  </div>
-</div>
-
-<!-- Battle -->
-<div class="screen" id="screen-battle">
-  <div class="battle">
-    <div class="topic-bar">
-      <div class="topic-label">📋 お題</div>
-      <div class="topic-text" id="topic-text">---</div>
-    </div>
-    <div class="arena">
-      <div class="side mine">
-        <div class="side-header">🟦 <span id="my-side-name">あなた</span></div>
-        <div id="my-inputs"></div>
-        <div class="submit-area" id="my-submit-area">
-          <button class="btn btn-primary" id="btn-submit">✅ 決定</button>
+    <!-- Main services -->
+    <div class="category-label">Main</div>
+    <div class="services">
+      <a href="https://my5-eight.vercel.app" class="service-card">
+        <div class="service-icon">🏆</div>
+        <div class="service-info">
+          <div class="service-name">MY5 (メインアプリ)</div>
+          <div class="service-desc">お気に入りトップ5を登録・公開・シェア</div>
         </div>
-        <div class="my-waiting-msg" id="my-waiting-msg" style="display:none;"></div>
-      </div>
-      <div class="side opponent">
-        <div class="side-header">🟧 <span id="opp-side-name">相手</span></div>
-        <div id="opp-slots"></div>
-        <div id="opp-status" style="text-align:center;padding:0.5rem 0;font-size:0.75rem;color:#555;"></div>
-        <div class="typing-indicator" id="opp-typing"></div>
-      </div>
+        <div class="service-arrow">→</div>
+      </a>
+      <a href="battle.html" class="service-card">
+        <div class="service-icon">⚔️</div>
+        <div class="service-info">
+          <div class="service-name">Ranking Battle</div>
+          <div class="service-desc">リアルタイム対戦型ランキングバトル</div>
+        </div>
+        <div class="service-arrow">→</div>
+      </a>
+      <a href="lp.html" class="service-card">
+        <div class="service-icon">📋</div>
+        <div class="service-info">
+          <div class="service-name">Landing Page</div>
+          <div class="service-desc">MY RANKINGの紹介ページ</div>
+        </div>
+        <div class="service-arrow">→</div>
+      </a>
     </div>
-    <div class="results" id="results-area" style="display:none;">
-      <div class="results-title">⚔️ 結果</div>
-      <div class="score-display" id="score-display"></div>
-      <div id="match-list"></div>
-      <div style="margin-top:1rem;"><button class="btn btn-gold" id="btn-next">🔄 次のお題</button></div>
-      <div style="margin-top:0.5rem;"><button class="btn btn-secondary" id="btn-back-lobby">🏠 ロビーに戻る</button></div>
+
+    <!-- Tools -->
+    <div class="category-label">Tools</div>
+    <div class="services">
+      <a href="admin.html" class="service-card">
+        <div class="service-icon">📊</div>
+        <div class="service-info">
+          <div class="service-name">Admin Dashboard</div>
+          <div class="service-desc">サービス統計・カテゴリ管理・アクティビティ</div>
+        </div>
+        <div class="service-arrow">→</div>
+      </a>
+      <a href="status.html" class="service-card">
+        <div class="service-icon">🔍</div>
+        <div class="service-info">
+          <div class="service-name">Service Status</div>
+          <div class="service-desc">API・外部サービスのリアルタイム稼働状況</div>
+        </div>
+        <div class="service-arrow">→</div>
+      </a>
+    </div>
+
+    <!-- API -->
+    <div class="category-label">API</div>
+    <div class="services">
+      <a href="https://my-ranking-api.hiroshinagano0113.workers.dev" class="service-card">
+        <div class="service-icon">⚡</div>
+        <div class="service-info">
+          <div class="service-name">MY RANKING API</div>
+          <div class="service-desc">Cloudflare Workers — ランキング・分析・検索</div>
+        </div>
+        <div class="service-arrow">→</div>
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-logo">MY RANKING</div>
+      <div class="footer-copy">&copy; 2025 MY RANKING. All rights reserved.</div>
+      <div class="footer-links">
+        <a href="https://github.com/paul13131313">GitHub</a>
+        <a href="status.html">Status</a>
+        <a href="admin.html">Admin</a>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Countdown overlay -->
-<div class="countdown-overlay" id="countdown-overlay">
-  <div class="countdown-num" id="countdown-num"></div>
-</div>
-
-<!-- Confetti canvas -->
-<canvas id="confetti-canvas"></canvas>
-
-<script>
-const SUPABASE_URL = 'https://equkrfpjlvovkzsmztwl.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Pl_UoNLCNidZzW4z0Ou1Sw_U-sXIzfq';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ========== Audio (Web Audio API) ==========
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playMatchSound() {
-  // Bright "pikon!" two-tone
-  [0, 0.12].forEach((delay, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = i === 0 ? 880 : 1320;
-    gain.gain.setValueAtTime(0.18, audioCtx.currentTime + delay);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.25);
-    osc.start(audioCtx.currentTime + delay);
-    osc.stop(audioCtx.currentTime + delay + 0.25);
-  });
-}
-
-function playCountdownTick() {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain); gain.connect(audioCtx.destination);
-  osc.type = 'square';
-  osc.frequency.value = 220;
-  gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-  osc.start(); osc.stop(audioCtx.currentTime + 0.15);
-}
-
-function playDrumroll(durationSec) {
-  // Rumbling drumroll that builds intensity
-  const bufSize = audioCtx.sampleRate * durationSec;
-  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-  const data = buf.getChannelData(0);
-  const grainLen = Math.floor(audioCtx.sampleRate * 0.03);
-  for (let i = 0; i < bufSize; i++) {
-    const progress = i / bufSize;
-    // Increasing density of hits
-    const interval = Math.floor(grainLen * (1.5 - progress));
-    const inGrain = i % Math.max(interval, 1) < grainLen * 0.3;
-    data[i] = inGrain ? (Math.random() * 2 - 1) * (0.05 + progress * 0.15) : 0;
-  }
-  const src = audioCtx.createBufferSource();
-  const filt = audioCtx.createBiquadFilter();
-  filt.type = 'lowpass'; filt.frequency.value = 400;
-  src.buffer = buf;
-  src.connect(filt); filt.connect(audioCtx.destination);
-  src.start();
-}
-
-function playRevealFanfare() {
-  // Rising fanfare chord
-  const freqs = [523, 659, 784, 1047];
-  freqs.forEach((f, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'triangle';
-    osc.frequency.value = f;
-    const t = audioCtx.currentTime + i * 0.06;
-    gain.gain.setValueAtTime(0.12, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    osc.start(t); osc.stop(t + 0.5);
-  });
-}
-
-// ========== Confetti ==========
-const confettiCanvas = document.getElementById('confetti-canvas');
-const confCtx = confettiCanvas.getContext('2d');
-let confettiPieces = [];
-let confettiRunning = false;
-
-function resizeConfetti() {
-  confettiCanvas.width = window.innerWidth;
-  confettiCanvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeConfetti);
-resizeConfetti();
-
-function launchConfetti() {
-  confettiPieces = [];
-  const colors = ['#2ecc71','#e8c84c','#4895EF','#e74c3c','#9b59b6','#1abc9c','#f39c12'];
-  for (let i = 0; i < 120; i++) {
-    confettiPieces.push({
-      x: Math.random() * confettiCanvas.width,
-      y: -20 - Math.random() * 200,
-      w: 4 + Math.random() * 6,
-      h: 6 + Math.random() * 10,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      vy: 2 + Math.random() * 3,
-      vx: (Math.random() - 0.5) * 3,
-      rot: Math.random() * Math.PI * 2,
-      vr: (Math.random() - 0.5) * 0.15,
-    });
-  }
-  if (!confettiRunning) { confettiRunning = true; animateConfetti(); }
-}
-
-function animateConfetti() {
-  confCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-  let alive = false;
-  for (const p of confettiPieces) {
-    p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.vy += 0.04;
-    if (p.y < confettiCanvas.height + 20) alive = true;
-    confCtx.save();
-    confCtx.translate(p.x, p.y);
-    confCtx.rotate(p.rot);
-    confCtx.fillStyle = p.color;
-    confCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-    confCtx.restore();
-  }
-  if (alive) requestAnimationFrame(animateConfetti);
-  else { confettiRunning = false; confCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
-}
-
-// ========== Countdown ==========
-function showCountdown() {
-  return new Promise(resolve => {
-    const overlay = document.getElementById('countdown-overlay');
-    const numEl = document.getElementById('countdown-num');
-    overlay.classList.add('active');
-
-    const steps = [
-      { text: '3', cls: '', delay: 0 },
-      { text: '2', cls: '', delay: 800 },
-      { text: '1', cls: '', delay: 1600 },
-      { text: '結果発表！', cls: 'go', delay: 2400 },
-    ];
-
-    playDrumroll(2.4);
-
-    steps.forEach(step => {
-      setTimeout(() => {
-        numEl.className = 'countdown-num ' + step.cls;
-        numEl.textContent = step.text;
-        numEl.style.animation = 'none';
-        void numEl.offsetWidth; // reflow
-        numEl.style.animation = '';
-        if (step.text !== '結果発表！') playCountdownTick();
-        else playRevealFanfare();
-      }, step.delay);
-    });
-
-    setTimeout(() => {
-      overlay.classList.remove('active');
-      resolve();
-    }, 3400);
-  });
-}
-
-// ========== Count-up animation ==========
-function animateCountUp(el, target, durationMs) {
-  const start = performance.now();
-  function tick(now) {
-    const p = Math.min((now - start) / durationMs, 1);
-    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
-    el.textContent = Math.round(eased * target) + '%';
-    if (p < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
-// ========== Nickname ==========
-const ADJ = ['最強の','伝説の','光速の','無敵の','孤高の','漆黒の','覚醒した','不屈の','天才','爆速の','静かなる','情熱の','鋼の','疾風の','紅蓮の'];
-const NOUN = ['戦士','ランカー','チャレンジャー','賢者','勇者','審判者','探求者','支配者','冒険者','守護者','破壊者','観測者','創造者','旅人','剣士'];
-function genName() {
-  const s = localStorage.getItem('ranking-battle-name');
-  if (s) return s;
-  const n = ADJ[Math.floor(Math.random()*ADJ.length)] + NOUN[Math.floor(Math.random()*NOUN.length)];
-  localStorage.setItem('ranking-battle-name', n); return n;
-}
-const myName = genName();
-document.getElementById('my-name').textContent = myName;
-document.getElementById('my-side-name').textContent = myName;
-
-// ========== Topics ==========
-const TOPICS = [
-  { emoji: '🎬', text: '好きな映画 トップ3は？' },
-  { emoji: '🎵', text: '好きな曲・アーティスト トップ3は？' },
-  { emoji: '🎮', text: '好きなゲーム トップ3は？' },
-  { emoji: '🍜', text: '好きな食べ物 トップ3は？' },
-  { emoji: '✈️', text: '行きたい旅行先 トップ3は？' },
-  { emoji: '📺', text: '好きなドラマ・アニメ トップ3は？' },
-  { emoji: '📚', text: '好きな本・マンガ トップ3は？' },
-  { emoji: '⚽', text: '好きなスポーツ選手 トップ3は？' },
-];
-
-// ========== State ==========
-let roomId = null, channel = null, isHost = false, opponentName = null;
-let currentTopic = null, myAnswers = null, oppAnswers = null, submitted = false;
-let typingTimeout = null;
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-}
-function genRoomId() { return String(Math.floor(1000 + Math.random() * 9000)); }
-function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-function normalize(s) { return s.trim().toLowerCase(); }
-
-// ========== Build UI ==========
-function buildMyInputs() {
-  const c = document.getElementById('my-inputs');
-  const medals = ['🥇','🥈','🥉'], classes = ['gold','silver','bronze'];
-  c.innerHTML = '';
-  for (let i = 0; i < 3; i++) {
-    c.innerHTML += `<div class="rank-input">
-      <div class="rank-num ${classes[i]}">${medals[i]}</div>
-      <input type="text" id="answer-${i}" placeholder="${i+1}位" autocomplete="off" />
-    </div>`;
-  }
-  // Attach typing broadcast
-  for (let i = 0; i < 3; i++) {
-    document.getElementById('answer-' + i).addEventListener('input', () => {
-      if (channel) channel.send({ type: 'broadcast', event: 'typing', payload: { name: myName } });
-    });
-  }
-}
-
-function buildOppSlots(revealed) {
-  const c = document.getElementById('opp-slots');
-  const medals = ['🥇','🥈','🥉'], classes = ['gold','silver','bronze'];
-  c.innerHTML = '';
-  for (let i = 0; i < 3; i++) {
-    const text = revealed && oppAnswers ? oppAnswers[i] : '？？？';
-    const matched = revealed && oppAnswers && myAnswers &&
-      myAnswers.some(a => normalize(a) === normalize(oppAnswers[i]));
-    const cls = revealed ? (matched ? 'revealed matched' : 'revealed') : '';
-    c.innerHTML += `<div class="rank-display">
-      <div class="rank-num ${classes[i]}">${medals[i]}</div>
-      <div class="rank-display-text ${cls}">${escapeHtml(text)}</div>
-    </div>`;
-  }
-}
-
-// ========== Room ==========
-function joinRoom(id) {
-  roomId = id;
-  document.getElementById('room-code').textContent = roomId;
-  showScreen('waiting');
-  updateNotifBanner();
-  requestNotifPermission();
-
-  channel = sb.channel('room-' + roomId, { config: { presence: { key: myName } } });
-
-  channel.on('presence', { event: 'sync' }, () => {
-    const players = Object.keys(channel.presenceState());
-    renderPlayers(players);
-    const opp = players.find(p => p !== myName);
-    const prevOpp = opponentName;
-    opponentName = opp || null;
-    document.getElementById('opp-side-name').textContent = opponentName || '相手';
-    if (players.length >= 2) {
-      document.getElementById('room-status').innerHTML = '✅ 2人揃いました！';
-      if (isHost) document.getElementById('btn-start').style.display = 'block';
-      if (opp && !prevOpp) sendNotification('対戦相手が見つかりました！', opp + 'さんがルームに参加しました', 'join-' + roomId);
-    } else {
-      document.getElementById('room-status').innerHTML = '<span class="waiting-dots">相手を待っています...</span>';
-      document.getElementById('btn-start').style.display = 'none';
-    }
-  });
-
-  channel.on('broadcast', { event: 'start' }, ({ payload }) => { currentTopic = payload.topic; startBattle(); });
-  channel.on('broadcast', { event: 'next' }, ({ payload }) => { currentTopic = payload.topic; startBattle(); });
-
-  channel.on('broadcast', { event: 'answer' }, ({ payload }) => {
-    if (payload.name !== myName) {
-      oppAnswers = payload.answers;
-      document.getElementById('opp-typing').innerHTML = '';
-      document.getElementById('opp-status').textContent = '✅ 決定済み';
-      if (!submitted) {
-        sendNotification('相手が回答しました！', 'あなたの番です - 回答を入力してください', 'answer-' + roomId);
+  <script>
+    // Quick health check for status bar
+    (async () => {
+      try {
+        const res = await fetch('https://my-ranking-api.hiroshinagano0113.workers.dev/');
+        if (res.ok) {
+          document.getElementById('statusDot').className = 'status-dot';
+          document.getElementById('statusText').textContent = '全サービス稼働中';
+        } else {
+          throw new Error();
+        }
+      } catch {
+        document.getElementById('statusDot').className = 'status-dot error';
+        document.getElementById('statusText').textContent = 'サービスに問題が発生しています';
       }
-      if (submitted) triggerReveal();
-    }
-  });
-
-  channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
-    if (payload.name !== myName) {
-      document.getElementById('opp-typing').innerHTML =
-        '✏️ 入力中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>';
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => { document.getElementById('opp-typing').innerHTML = ''; }, 2000);
-    }
-  });
-
-  channel.subscribe(async (status) => {
-    if (status === 'SUBSCRIBED') await channel.track({ name: myName });
-  });
-}
-
-function renderPlayers(players) {
-  document.getElementById('player-list').innerHTML = players.map(p =>
-    `<div class="player-tag ${p === myName ? 'me' : 'opponent'}">${escapeHtml(p)}</div>`
-  ).join('');
-}
-
-function leaveRoom() {
-  if (channel) { channel.unsubscribe(); channel = null; }
-  roomId = null; isHost = false; opponentName = null;
-  currentTopic = null; myAnswers = null; oppAnswers = null; submitted = false;
-  document.getElementById('btn-start').style.display = 'none';
-  showScreen('lobby');
-}
-
-// ========== Battle ==========
-function startBattle() {
-  myAnswers = null; oppAnswers = null; submitted = false;
-  document.getElementById('topic-text').textContent = currentTopic.emoji + ' ' + currentTopic.text;
-  buildMyInputs();
-  buildOppSlots(false);
-  document.getElementById('opp-status').textContent = '⏳ 回答中...';
-  document.getElementById('opp-typing').innerHTML = '';
-  document.getElementById('my-submit-area').style.display = 'block';
-  document.getElementById('my-waiting-msg').style.display = 'none';
-  document.getElementById('results-area').style.display = 'none';
-  showScreen('battle');
-}
-
-function submitAnswers() {
-  const answers = [];
-  for (let i = 0; i < 3; i++) {
-    const v = document.getElementById('answer-' + i).value.trim();
-    if (!v) { alert((i + 1) + '位を入力してください'); return; }
-    answers.push(v);
-  }
-  myAnswers = answers; submitted = true;
-  for (let i = 0; i < 3; i++) document.getElementById('answer-' + i).disabled = true;
-  document.getElementById('my-submit-area').style.display = 'none';
-
-  // Show waiting message
-  const waitMsg = document.getElementById('my-waiting-msg');
-  waitMsg.style.display = 'block';
-  waitMsg.innerHTML = '<span class="waiting-dots">相手の回答を待っています... ⏳</span>';
-
-  channel.send({ type: 'broadcast', event: 'answer', payload: { name: myName, answers: myAnswers } });
-  sb.from('battle_answers').insert({
-    room_id: roomId, nickname: myName, topic: currentTopic.text,
-    answer_1: myAnswers[0], answer_2: myAnswers[1], answer_3: myAnswers[2],
-  });
-
-  if (oppAnswers) triggerReveal();
-}
-
-async function triggerReveal() {
-  document.getElementById('my-waiting-msg').style.display = 'none';
-  // Resume AudioContext on user gesture
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  await showCountdown();
-  revealResults();
-}
-
-function revealResults() {
-  buildOppSlots(true);
-  document.getElementById('opp-status').textContent = '';
-
-  const myNorm = myAnswers.map(normalize);
-  const oppNorm = oppAnswers.map(normalize);
-  const matches = [];
-  for (let i = 0; i < 3; i++) {
-    const oppIdx = oppNorm.indexOf(myNorm[i]);
-    if (oppIdx !== -1) matches.push({ title: myAnswers[i], myRank: i + 1, oppRank: oppIdx + 1 });
-  }
-
-  // Highlight my inputs
-  for (let i = 0; i < 3; i++) {
-    const inp = document.getElementById('answer-' + i);
-    if (myNorm[i] && oppNorm.includes(myNorm[i])) {
-      inp.style.borderColor = '#2ecc71'; inp.style.color = '#2ecc71';
-    }
-  }
-
-  // Score
-  let score = 0;
-  matches.forEach(m => { score += 1; if (m.myRank === m.oppRank) score += 0.5; });
-  const pct = Math.round((score / 4.5) * 100);
-
-  // Render score with count-up
-  const sd = document.getElementById('score-display');
-  const cls = pct >= 60 ? 'high' : pct >= 30 ? 'mid' : 'low';
-  const msg = pct >= 60 ? '🔥 趣味が合いすぎ！' : pct >= 30 ? '✨ なかなか合うね！' : '🌈 個性的な組み合わせ！';
-  sd.innerHTML = `<div class="score-big ${cls}" id="score-num">0%</div><div class="score-label">${msg}</div>`;
-  animateCountUp(document.getElementById('score-num'), pct, 1200);
-
-  // Match list with sparkle
-  const ml = document.getElementById('match-list');
-  if (matches.length === 0) {
-    ml.innerHTML = '<div class="match-none">一致なし...次は合うかも！</div>';
-  } else {
-    ml.innerHTML = matches.map(m =>
-      `<div class="match-row sparkle">
-        <div class="match-badge hit">MATCH</div>
-        <div style="flex:1;font-weight:700;">${escapeHtml(m.title)}</div>
-        <div style="font-size:0.7rem;color:#666;">${m.myRank}位 ↔ ${m.oppRank}位</div>
-      </div>`
-    ).join('');
-    // Play match sounds staggered
-    matches.forEach((_, i) => setTimeout(playMatchSound, 300 + i * 400));
-  }
-
-  // Unmatched
-  for (let i = 0; i < 3; i++) {
-    if (!oppNorm.includes(myNorm[i]) && myAnswers[i]) {
-      ml.innerHTML += `<div class="match-row">
-        <div class="match-badge miss">MISS</div>
-        <div style="flex:1;color:#555;">${escapeHtml(myAnswers[i])}</div>
-        <div style="font-size:0.7rem;color:#333;">あなたの${i+1}位</div>
-      </div>`;
-    }
-  }
-
-  document.getElementById('results-area').style.display = 'block';
-
-  // Notification for results
-  sendNotification('結果: ' + pct + '%マッチ！', msg + ' ' + matches.length + '個一致', 'result-' + roomId);
-
-  // Confetti for high scores
-  if (pct >= 80) setTimeout(launchConfetti, 600);
-}
-
-// ========== Notifications ==========
-function sendNotification(title, body, tag) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  if (document.visibilityState === 'visible' && document.hasFocus()) return;
-  try {
-    const n = new Notification(title, {
-      body,
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚔️</text></svg>',
-      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚔️</text></svg>',
-      tag: tag || 'ranking-battle',
-      vibrate: [200, 100, 200],
-      requireInteraction: false,
-    });
-    n.onclick = () => { window.focus(); n.close(); };
-  } catch (e) { /* ignore */ }
-}
-
-function updateNotifBanner() {
-  const banner = document.getElementById('notif-banner');
-  const text = document.getElementById('notif-banner-text');
-  if (!('Notification' in window)) { banner.style.display = 'none'; return; }
-  banner.style.display = 'flex';
-  if (Notification.permission === 'granted') {
-    banner.className = 'notif-banner granted';
-    text.textContent = '通知ON - 対戦の更新を受け取ります';
-  } else if (Notification.permission === 'denied') {
-    banner.className = 'notif-banner denied';
-    text.textContent = '通知がブロックされています';
-  } else {
-    banner.className = 'notif-banner';
-    text.textContent = '通知をONにして対戦の更新を受け取る';
-  }
-}
-
-function requestNotifPermission() {
-  if (!('Notification' in window)) return;
-  if (Notification.permission === 'default') {
-    Notification.requestPermission().then(updateNotifBanner);
-  }
-}
-
-document.getElementById('notif-banner').addEventListener('click', () => {
-  if (Notification.permission === 'default') requestNotifPermission();
-});
-
-// ========== Invite Link ==========
-document.getElementById('btn-copy-invite').addEventListener('click', () => {
-  const url = location.origin + location.pathname + '?room=' + roomId;
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('btn-copy-invite');
-    btn.textContent = '✅ コピーしました！';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 招待リンクをコピー'; btn.classList.remove('copied'); }, 2000);
-  });
-});
-
-// ========== Event Listeners ==========
-document.getElementById('btn-create').addEventListener('click', () => { isHost = true; joinRoom(genRoomId()); });
-
-document.getElementById('btn-join').addEventListener('click', () => {
-  const id = document.getElementById('input-room-id').value.trim();
-  if (id.length !== 4) { alert('4桁のルームIDを入力してください'); return; }
-  isHost = false; joinRoom(id);
-});
-
-document.getElementById('input-room-id').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('btn-join').click();
-});
-
-document.getElementById('btn-leave').addEventListener('click', leaveRoom);
-
-document.getElementById('btn-start').addEventListener('click', () => {
-  const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
-  channel.send({ type: 'broadcast', event: 'start', payload: { topic } });
-  currentTopic = topic; startBattle();
-});
-
-document.getElementById('btn-submit').addEventListener('click', submitAnswers);
-
-document.getElementById('btn-next').addEventListener('click', () => {
-  const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
-  channel.send({ type: 'broadcast', event: 'next', payload: { topic } });
-  currentTopic = topic; startBattle();
-});
-
-document.getElementById('btn-back-lobby').addEventListener('click', leaveRoom);
-
-// ========== Auto-join from invite link ==========
-(function() {
-  const params = new URLSearchParams(location.search);
-  const inviteRoom = params.get('room');
-  if (inviteRoom && /^\d{4}$/.test(inviteRoom)) {
-    isHost = false;
-    joinRoom(inviteRoom);
-    history.replaceState(null, '', location.pathname);
-  }
-})();
-</script>
+    })();
+  </script>
 </body>
 </html>

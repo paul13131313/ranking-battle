@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Status — MY RANKING</title>
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --bg-card: #141418;
+      --bg-hover: #1a1a20;
+      --border: #2a2a32;
+      --text: #e8e6e3;
+      --text-muted: #8a8890;
+      --accent: #f0c040;
+      --success: #40c080;
+      --danger: #e05050;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .logo {
+      font-family: Georgia, serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--bg);
+      background: var(--accent);
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .refresh-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    #timer { color: var(--accent); font-weight: 600; }
+
+    /* Overall status */
+    .overall {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .overall-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .overall-label {
+      font-family: Georgia, serif;
+      font-size: 1.3rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .overall-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Endpoint cards */
+    .endpoints {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .ep-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .ep-card:hover { border-color: #3a3a44; }
+
+    .ep-status {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .ep-info { flex: 1; min-width: 0; }
+
+    .ep-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .ep-url {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      word-break: break-all;
+    }
+
+    .ep-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .ep-latency {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: Georgia, serif;
+    }
+
+    .ep-latency.ok { color: var(--success); }
+    .ep-latency.slow { color: var(--accent); }
+    .ep-latency.error { color: var(--danger); }
+
+    .ep-latency-unit {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .ep-status-text {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .ep-status-text.ok { color: var(--success); }
+    .ep-status-text.error { color: var(--danger); }
+
+    /* Health section */
+    .health-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .health-title {
+      font-family: Georgia, serif;
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .health-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .health-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .health-row:last-child { border-bottom: none; }
+
+    .health-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .health-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .health-badge.ok {
+      background: rgba(64, 192, 128, 0.12);
+      color: var(--success);
+    }
+
+    .health-badge.error {
+      background: rgba(224, 80, 80, 0.12);
+      color: var(--danger);
+    }
+
+    .health-badge.checking {
+      background: rgba(138, 136, 144, 0.12);
+      color: var(--text-muted);
+    }
+
+    /* Back link */
+    .back-link {
+      display: block;
+      text-align: center;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.85rem;
+      margin-top: 2rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <a href="index.html" class="logo">MY RANKING</a>
+        <span class="badge">Status</span>
+      </div>
+      <div class="refresh-info">
+        次のチェックまで <span id="timer">10</span>秒
+      </div>
+    </div>
+
+    <!-- Overall -->
+    <div class="overall">
+      <div class="overall-icon" id="overallIcon">-</div>
+      <div class="overall-label" id="overallLabel">チェック中...</div>
+      <div class="overall-time">最終チェック: <span id="lastCheck">-</span></div>
+    </div>
+
+    <!-- Endpoints -->
+    <div class="endpoints" id="endpoints">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- External services health -->
+    <div class="health-section">
+      <div class="health-title">外部サービス接続</div>
+      <div class="health-items" id="healthItems">
+        <div class="health-row">
+          <span class="health-name">Supabase</span>
+          <span class="health-badge checking" id="healthSupabase">チェック中</span>
+        </div>
+        <div class="health-row">
+          <span class="health-name">Claude API</span>
+          <span class="health-badge checking" id="healthClaude">チェック中</span>
+        </div>
+        <div class="health-row">
+          <span class="health-name">TMDb API</span>
+          <span class="health-badge checking" id="healthTmdb">チェック中</span>
+        </div>
+      </div>
+    </div>
+
+    <a href="index.html" class="back-link">← ポータルに戻る</a>
+  </div>
+
+  <script>
+    const API = 'https://my-ranking-api.hiroshinagano0113.workers.dev';
+    let countdown = 10;
+
+    const ENDPOINTS = [
+      { name: 'ランキング一覧', path: '/rankings', desc: 'GET /rankings' },
+      { name: '趣味分析 (Claude AI)', path: '/analyze', desc: 'GET /analyze' },
+      { name: '映画検索 (TMDb)', path: '/search/movie?q=test', desc: 'GET /search/movie' },
+      { name: '管理統計', path: '/admin/stats', desc: 'GET /admin/stats' },
+      { name: 'プラン情報', path: '/pricing', desc: 'GET /pricing' },
+    ];
+
+    setInterval(() => {
+      countdown--;
+      document.getElementById('timer').textContent = countdown;
+      if (countdown <= 0) {
+        countdown = 10;
+        runChecks();
+      }
+    }, 1000);
+
+    function formatNow() {
+      const d = new Date();
+      return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+    }
+
+    async function checkEndpoint(ep) {
+      const start = performance.now();
+      try {
+        const res = await fetch(`${API}${ep.path}`);
+        const latency = Math.round(performance.now() - start);
+        return { ...ep, ok: res.ok, latency, status: res.status };
+      } catch (e) {
+        const latency = Math.round(performance.now() - start);
+        return { ...ep, ok: false, latency, error: e.message };
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch(`${API}/health`);
+        const data = await res.json();
+        return data.checks || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function renderEndpoints(results) {
+      const container = document.getElementById('endpoints');
+      container.innerHTML = results.map(r => {
+        const icon = r.ok ? '🟢' : '🔴';
+        const latencyClass = !r.ok ? 'error' : r.latency > 2000 ? 'slow' : 'ok';
+        const statusText = r.ok ? '正常' : '異常';
+        const statusClass = r.ok ? 'ok' : 'error';
+
+        return `<div class="ep-card">
+          <div class="ep-status">${icon}</div>
+          <div class="ep-info">
+            <div class="ep-name">${r.name}</div>
+            <div class="ep-url">${r.desc}</div>
+          </div>
+          <div class="ep-right">
+            <div class="ep-latency ${latencyClass}">${r.latency}<span class="ep-latency-unit">ms</span></div>
+            <div class="ep-status-text ${statusClass}">${statusText}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderHealth(checks) {
+      const map = {
+        supabase: 'healthSupabase',
+        claude_api: 'healthClaude',
+        tmdb_api: 'healthTmdb',
+      };
+      for (const [key, elId] of Object.entries(map)) {
+        const el = document.getElementById(elId);
+        const c = checks[key];
+        if (!c) {
+          el.textContent = '不明';
+          el.className = 'health-badge error';
+          continue;
+        }
+        if (c.status === 'ok') {
+          el.textContent = `正常 ${c.latency_ms || ''}ms`;
+          el.className = 'health-badge ok';
+        } else {
+          el.textContent = '異常';
+          el.className = 'health-badge error';
+        }
+      }
+    }
+
+    function updateOverall(results, checks) {
+      const allEndpointsOk = results.every(r => r.ok);
+      const allHealthOk = Object.values(checks).every(c => c.status === 'ok');
+      const allOk = allEndpointsOk && allHealthOk;
+
+      document.getElementById('overallIcon').textContent = allOk ? '🟢' : '🔴';
+      document.getElementById('overallLabel').textContent = allOk ? '全サービス正常稼働中' : '一部のサービスに問題があります';
+      document.getElementById('lastCheck').textContent = formatNow();
+    }
+
+    async function runChecks() {
+      countdown = 10;
+
+      const [results, checks] = await Promise.all([
+        Promise.all(ENDPOINTS.map(checkEndpoint)),
+        checkHealth(),
+      ]);
+
+      renderEndpoints(results);
+      renderHealth(checks);
+      updateOverall(results, checks);
+    }
+
+    runChecks();
+  </script>
+</body>
+</html>
