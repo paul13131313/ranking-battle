@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MY RANKING - あなたの「好き」を可視化する</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a1a;--surface:#12122a;--card:#1a1a3a;
+  --primary:#6366f1;--accent:#a855f7;--pink:#ec4899;
+  --text:#e2e8f0;--muted:#94a3b8;
+  --gradient:linear-gradient(135deg,#6366f1,#a855f7,#ec4899);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.7}
+a{color:inherit;text-decoration:none}
+
+/* Fade-in animation */
+.fade-section{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s ease}
+.fade-section.visible{opacity:1;transform:translateY(0)}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;padding:2rem}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(99,102,241,.15),transparent 70%),radial-gradient(ellipse at 80% 70%,rgba(168,85,247,.1),transparent 60%);pointer-events:none}
+.hero-badge{display:inline-block;padding:.4rem 1.2rem;border-radius:99px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);font-size:.85rem;color:var(--primary);margin-bottom:1.5rem;letter-spacing:.05em}
+.hero h1{font-size:clamp(2.5rem,8vw,5rem);font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;margin-bottom:1rem}
+.hero p{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--muted);max-width:600px;margin-bottom:2.5rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.9rem 2.2rem;border-radius:12px;font-size:1.05rem;font-weight:600;border:none;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn-primary{background:var(--gradient);color:#fff;box-shadow:0 4px 24px rgba(99,102,241,.35)}
+.btn-primary:hover{box-shadow:0 8px 32px rgba(99,102,241,.5)}
+.btn-outline{background:transparent;color:var(--text);border:1.5px solid rgba(255,255,255,.2);margin-left:.8rem}
+.btn-outline:hover{border-color:var(--primary)}
+.hero-buttons{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center}
+.scroll-hint{position:absolute;bottom:2rem;animation:bounce 2s infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+
+/* Section common */
+section{padding:5rem 1.5rem}
+.section-inner{max-width:900px;margin:0 auto}
+.section-label{font-size:.8rem;text-transform:uppercase;letter-spacing:.15em;color:var(--accent);font-weight:600;margin-bottom:.5rem}
+.section-title{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:700;margin-bottom:1rem}
+.section-desc{color:var(--muted);font-size:1.05rem;margin-bottom:2.5rem;max-width:600px}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem}
+.stat-card{background:var(--card);border-radius:16px;padding:2rem;text-align:center;border:1px solid rgba(255,255,255,.06);transition:transform .3s}
+.stat-card:hover{transform:translateY(-4px)}
+.stat-number{font-size:2.8rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-label{color:var(--muted);margin-top:.3rem;font-size:.95rem}
+.live-dot{display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;margin-right:.4rem;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* AI Analysis */
+.ai-card{background:var(--card);border-radius:20px;padding:2.5rem;border:1px solid rgba(168,85,247,.2);position:relative;overflow:hidden}
+.ai-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient)}
+.ai-text{font-size:1.05rem;line-height:1.9;color:var(--text)}
+.ai-text .loading{color:var(--muted);font-style:italic}
+.ai-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(168,85,247,.12);color:var(--accent);padding:.3rem .9rem;border-radius:99px;font-size:.8rem;margin-bottom:1.2rem}
+
+/* Battle */
+.battle-section{background:var(--surface)}
+.battle-card{background:var(--card);border-radius:20px;padding:2.5rem;text-align:center;border:1px solid rgba(236,72,153,.15)}
+.battle-emoji{font-size:3.5rem;margin-bottom:1rem}
+.battle-card h3{font-size:1.4rem;margin-bottom:.8rem}
+.battle-card p{color:var(--muted);margin-bottom:1.5rem}
+
+/* Movie Search */
+.search-box{display:flex;gap:.8rem;margin-bottom:2rem;flex-wrap:wrap}
+.search-input{flex:1;min-width:200px;padding:.9rem 1.2rem;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:var(--card);color:var(--text);font-size:1rem;outline:none;transition:border-color .3s}
+.search-input:focus{border-color:var(--primary)}
+.search-input::placeholder{color:var(--muted)}
+.btn-search{padding:.9rem 1.8rem;border-radius:12px;background:var(--primary);color:#fff;border:none;font-size:1rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+.btn-search:hover{opacity:.85}
+.movie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1.2rem}
+.movie-card{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.06);transition:transform .3s}
+.movie-card:hover{transform:translateY(-4px)}
+.movie-poster{width:100%;aspect-ratio:2/3;object-fit:cover;background:var(--surface)}
+.movie-info{padding:.8rem}
+.movie-title{font-size:.85rem;font-weight:600;margin-bottom:.3rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.movie-meta{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between}
+.movie-rating{color:#fbbf24}
+.no-poster{width:100%;aspect-ratio:2/3;background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:2rem}
+
+/* Footer */
+footer{text-align:center;padding:3rem 1.5rem;color:var(--muted);font-size:.85rem;border-top:1px solid rgba(255,255,255,.06)}
+footer a{color:var(--primary)}
+
+@media(max-width:600px){
+  .hero-buttons{flex-direction:column;align-items:center}
+  .btn-outline{margin-left:0}
+  .stats-grid{grid-template-columns:1fr}
+  .movie-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">Powered by Cloudflare Workers + Claude AI</div>
+  <h1>MY RANKING</h1>
+  <p>あなたの「好き」を可視化して、AIが趣味の傾向を分析。友達と趣味マッチ度を競おう。</p>
+  <div class="hero-buttons">
+    <a href="https://shelf-drab.vercel.app" class="btn btn-primary">始める &rarr;</a>
+    <a href="#live-data" class="btn btn-outline">機能を見る</a>
+  </div>
+  <div class="scroll-hint" style="color:var(--muted);font-size:1.5rem">&#8964;</div>
+</section>
+
+<!-- Live Data -->
+<section id="live-data" class="fade-section">
+  <div class="section-inner">
+    <div class="section-label">Step 1 &mdash; API連携</div>
+    <h2 class="section-title"><span class="live-dot"></span>リアルタイムデータ</h2>
+    <p class="section-desc">ランキングデータはAPIからリアルタイムに取得。いつでも最新の状態を反映します。</p>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number" id="cat-count">-</div>
+        <div class="stat-label">カテゴリ数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="item-count">-</div>
+        <div class="stat-label">登録作品数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="top-cat">-</div>
+        <div class="stat-label">最多カテゴリ</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI Analysis -->
+<section class="fade-section">
+  <div class="section-inner">
+    <div class="section-label">Step 3 &mdash; AI連携</div>
+    <h2 class="section-title">AIがあなたの趣味を分析します</h2>
+    <p class="section-desc">Claude AIがランキングデータから好みの傾向、意外な共通点を読み解きます。</p>
+    <div class="ai-card">
+      <div class="ai-badge">&#x1F916; Claude AI による分析</div>
+      <div class="ai-text" id="ai-result"><span class="loading">分析データを読み込み中...</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Battle -->
+<section class="battle-section fade-section">
+  <div class="section-inner">
+    <div class="section-label">Step 4 &mdash; リアルタイム</div>
+    <h2 class="section-title">友達と趣味マッチ度を競おう</h2>
+    <p class="section-desc">ランキングバトルで友達と好みの一致度をリアルタイムに競い合えます。</p>
+    <div class="battle-card">
+      <div class="battle-emoji">&#x1F525;&#x1F3AE;&#x1F525;</div>
+      <h3>RANKING BATTLE</h3>
+      <p>2人のランキングをリアルタイムに比較。カウントダウン、エフェクト付きの本格バトル体験。</p>
+      <a href="https://paul13131313.github.io/ranking-battle/" class="btn btn-primary">バトルに参加 &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- Movie Search -->
+<section class="fade-section">
+  <div class="section-inner">
+    <div class="section-label">Step 5 &mdash; 外部API</div>
+    <h2 class="section-title">映画検索デモ</h2>
+    <p class="section-desc">TMDb APIと連携して、映画のポスター・評価をリアルタイムに検索できます。</p>
+    <div class="search-box">
+      <input type="text" class="search-input" id="movie-input" placeholder="映画タイトルを入力...（例: インセプション）">
+      <button class="btn-search" id="movie-btn">検索</button>
+    </div>
+    <div class="movie-grid" id="movie-results"></div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>MY RANKING &copy; 2025 &mdash; Built with <a href="https://workers.cloudflare.com" target="_blank">Cloudflare Workers</a>, <a href="https://www.anthropic.com" target="_blank">Claude AI</a>, <a href="https://supabase.com" target="_blank">Supabase</a></p>
+</footer>
+
+<script>
+const API = 'https://my-ranking-api.hiroshinagano0113.workers.dev';
+
+// Fade-in on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, { threshold: 0.15 });
+document.querySelectorAll('.fade-section').forEach(el => observer.observe(el));
+
+// Animate number count-up
+function animateNum(el, target, suffix = '') {
+  let current = 0;
+  const step = Math.max(1, Math.floor(target / 30));
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) { current = target; clearInterval(timer); }
+    el.textContent = current + suffix;
+  }, 30);
+}
+
+// Load live stats
+async function loadStats() {
+  try {
+    const cats = await fetch(API + '/rankings').then(r => r.json());
+    const catCount = cats.length;
+    animateNum(document.getElementById('cat-count'), catCount);
+
+    let totalItems = 0;
+    let maxCat = { name: '', count: 0 };
+    const promises = cats.map(async (cat) => {
+      const items = await fetch(API + '/rankings/' + cat.id).then(r => r.json());
+      totalItems += items.length;
+      if (items.length > maxCat.count) maxCat = { name: cat.icon + ' ' + cat.name, count: items.length };
+    });
+    await Promise.all(promises);
+    animateNum(document.getElementById('item-count'), totalItems, '+');
+    document.getElementById('top-cat').textContent = maxCat.name;
+  } catch (e) {
+    document.getElementById('cat-count').textContent = '?';
+    document.getElementById('item-count').textContent = '?';
+  }
+}
+
+// Load AI analysis
+async function loadAnalysis() {
+  try {
+    const data = await fetch(API + '/analyze').then(r => r.json());
+    document.getElementById('ai-result').textContent = data.analysis || '分析できませんでした。';
+  } catch (e) {
+    document.getElementById('ai-result').textContent = '分析の読み込みに失敗しました。';
+  }
+}
+
+// Movie search
+async function searchMovie() {
+  const q = document.getElementById('movie-input').value.trim();
+  if (!q) return;
+  const grid = document.getElementById('movie-results');
+  grid.innerHTML = '<p style="color:var(--muted)">検索中...</p>';
+  try {
+    const data = await fetch(API + '/search/movie?q=' + encodeURIComponent(q)).then(r => r.json());
+    if (!data.results || data.results.length === 0) {
+      grid.innerHTML = '<p style="color:var(--muted)">結果が見つかりませんでした。</p>';
+      return;
+    }
+    grid.innerHTML = data.results.slice(0, 8).map(m => `
+      <div class="movie-card">
+        ${m.poster_url
+          ? `<img class="movie-poster" src="${m.poster_url}" alt="${m.title}" loading="lazy">`
+          : `<div class="no-poster">&#127910;</div>`}
+        <div class="movie-info">
+          <div class="movie-title">${m.title}</div>
+          <div class="movie-meta">
+            <span>${m.release_year || '?'}</span>
+            <span class="movie-rating">&#9733; ${m.rating ? m.rating.toFixed(1) : '-'}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = '<p style="color:var(--muted)">検索に失敗しました。</p>';
+  }
+}
+
+document.getElementById('movie-btn').addEventListener('click', searchMovie);
+document.getElementById('movie-input').addEventListener('keydown', e => { if (e.key === 'Enter') searchMovie(); });
+
+// Init
+loadStats();
+loadAnalysis();
+</script>
+</body>
+</html>
